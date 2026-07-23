@@ -80,6 +80,8 @@ class MonoTree extends HTMLElement {
                 border-radius: 8px;
                 overflow: hidden;
                 box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+                tab-size: 4;
+                -moz-tab-size: 4;
             }
 
             .toolbar {

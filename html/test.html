@@ -76,6 +76,8 @@
             padding: 12px;
             outline: none;
             transition: border-color 0.2s;
+            tab-size: 4;
+            -moz-tab-size: 4;
         }
 
         textarea:focus,
@@ -115,6 +117,8 @@
             min-height: 80px;
             white-space: pre-wrap;
             word-break: break-all;
+            tab-size: 4;
+            -moz-tab-size: 4;
         }
 
         .badge {
@@ -282,8 +286,38 @@
             }
         }
 
-        // 페이지 초기화 시 자동 시범 실행
+        // 페이지 초기화 시 자동 시범 실행 및 Tab 키 입력 핸들러 등록
         window.onload = function () {
+            const textarea = document.getElementById('monoInput');
+            if (textarea) {
+                textarea.addEventListener('keydown', function (e) {
+                    if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const start = this.selectionStart;
+                        const end = this.selectionEnd;
+
+                        if (!e.shiftKey) {
+                            // Tab 입력: \t 삽입
+                            this.value = this.value.substring(0, start) + "\t" + this.value.substring(end);
+                            this.selectionStart = this.selectionEnd = start + 1;
+                        } else {
+                            // Shift+Tab 입력: 선택 범위 또는 현재 위치 전의 \t 제거
+                            if (start > 0 && this.value.substring(start - 1, start) === "\t") {
+                                this.value = this.value.substring(0, start - 1) + this.value.substring(end);
+                                this.selectionStart = this.selectionEnd = start - 1;
+                            }
+                        }
+
+                        buildMono();
+                    }
+                });
+
+                // 입력 시 실시간 트리 갱신
+                textarea.addEventListener('input', function () {
+                    buildMono();
+                });
+            }
+
             buildMono();
             runQuery();
         };
