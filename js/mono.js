@@ -90,27 +90,96 @@ class Mono {
         let idx = 0;
 
         for (let t of toks) {
-            if (t.startsWith('(') && t.endsWith(')')) {
-                // 익명 서브트리 (b,c) -> 오토 인덱스 Key 부여
-                const sub = new Mono(String(idx));
-                const subToks = this._tokenize(t.slice(1, -1));
-                for (let st of subToks) {
-                    if (st.includes('(')) {
-                        sub.addChild(new Mono(st));
-                    } else {
-                        sub.addChild(new Mono(st, st));
-                    }
-                }
-                this.addChild(sub);
-            } else if (t.includes('(')) {
-                // 이름 있는 서브트리 (예: sub(x, y))
-                this.addChild(new Mono(t));
-            } else {
-                // 단말 노드 -> Key와 Value를 동일하게 적재
-                this.addChild(new Mono(t, t));
-            }
-            idx++;
+            this._addToken(this, t, idx++);
         }
+    }
+
+    /**
+     * 경로/서브트리/단말 노드 토큰 적재
+     * @private
+     */
+    _addToken(parent, t, autoIdx) {
+        if (!t) return;
+
+        // 1. 따옴표로 감싸진 리터럴 문자열 ("b.c")
+        if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+            const rawVal = t.slice(1, -1);
+            parent.addChild(new Mono(rawVal, rawVal));
+            return;
+        }
+
+        // 2. 익명 서브트리 (b,c)
+        if (t.startsWith('(') && t.endsWith(')')) {
+            const sub = new Mono(String(autoIdx));
+            const subToks = this._tokenize(t.slice(1, -1));
+            let subIdx = 0;
+            for (let st of subToks) {
+                this._addToken(sub, st, subIdx++);
+            }
+            parent.addChild(sub);
+            return;
+        }
+
+        // 3. 점(.) 구분을 통한 계층화 노드 (예: b.c, d.e, b.c(x,y))
+        const parts = this._splitDotPath(t);
+        if (parts.length > 1) {
+            let curParent = parent;
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                if (i === parts.length - 1) {
+                    this._addToken(curParent, part, 0);
+                } else {
+                    let existing = curParent.children.get(part);
+                    if (!existing) {
+                        existing = new Mono(part);
+                        curParent.addChild(existing);
+                    }
+                    curParent = existing;
+                }
+            }
+            return;
+        }
+
+        // 4. 이름 있는 서브트리 (예: sub(x,y))
+        if (t.includes('(')) {
+            parent.addChild(new Mono(t));
+            return;
+        }
+
+        // 5. 단말 노드 (예: b)
+        parent.addChild(new Mono(t, t));
+    }
+
+    /**
+     * 괄호/따옴표 바깥의 점(.) 분할 헬퍼
+     * @private
+     */
+    _splitDotPath(t) {
+        if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+            return [t];
+        }
+        const parts = [];
+        let cur = '';
+        let depth = 0;
+        let inQuotes = false;
+
+        for (let i = 0; i < t.length; i++) {
+            const c = t[i];
+            if (c === '"' || c === "'") inQuotes = !inQuotes;
+            if (!inQuotes) {
+                if (c === '(') depth++;
+                else if (c === ')') depth--;
+            }
+
+            if (c === '.' && depth === 0 && !inQuotes) {
+                if (cur.trim()) parts.push(cur.trim());
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+        if (cur.trim()) parts.push(cur.trim());
+        return parts;
     }
 
     /**
@@ -121,13 +190,17 @@ class Mono {
         const toks = [];
         let cur = '';
         let d = 0;
+        let inQuotes = false;
 
         for (let i = 0; i < s.length; i++) {
             const c = s[i];
-            if (c === '(') d++;
-            else if (c === ')') d--;
+            if (c === '"' || c === "'") inQuotes = !inQuotes;
+            if (!inQuotes) {
+                if (c === '(') d++;
+                else if (c === ')') d--;
+            }
 
-            if (c === ',' && d === 0) {
+            if (c === ',' && d === 0 && !inQuotes) {
                 if (cur.trim()) toks.push(cur.trim());
                 cur = '';
             } else {

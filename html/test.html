@@ -197,6 +197,15 @@
         </div>
     </div>
 
+    <div class="container" style="margin-top: 20px;">
+        <div style="grid-column: 1 / -1;">
+            <div class="card">
+                <span class="card-title">🌳 5. 폴딩 가능한 MONO 트리 뷰 (<mono-tree> Web Component)</span>
+                <mono-tree id="monoTreeViewer" expr="a((b,c), d)"></mono-tree>
+            </div>
+        </div>
+    </div>
+
     <div class="guide-box">
         <strong>💡 MONO 쿼리 테스트 조합 가이드 (예시: <code>a((b,c), d)</code> 입력 기준):</strong>
         <ul>
@@ -209,13 +218,15 @@
     </div>
 
     <script src="../js/mono.js"></script>
+    <script src="../js/mono-tree.js"></script>
     <script>
         let currentMonoInstance = null;
 
-        // 1. MONO 인스턴스 생성 함수
+        // 1. MONO 인스턴스 생성 및 트리 뷰 바인딩 함수
         function buildMono() {
             const inputStr = document.getElementById('monoInput').value.trim();
             const statusDiv = document.getElementById('nodeStatus');
+            const treeViewer = document.getElementById('monoTreeViewer');
 
             try {
                 if (typeof Mono === 'undefined') {
@@ -230,6 +241,10 @@
 - 자식 노드 개수: ${currentMonoInstance.childrenOrder.length}개
 - 직속 자식 Key 목록: [ ${Array.from(currentMonoInstance.children.keys()).join(', ')} ]
             `.trim();
+
+                if (treeViewer) {
+                    treeViewer.mono = currentMonoInstance;
+                }
             } catch (e) {
                 statusDiv.innerHTML = `<span class="badge badge-warn">파싱 에러</span> ${e.message}`;
             }
