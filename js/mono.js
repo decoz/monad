@@ -13,10 +13,15 @@ class Mono {
         this.childrenOrder = [];         // 순서 기반 Array (a[1])
 
         // 문자열 표현식이 들어온 경우 파싱 실행
-        if (typeof expr === 'string' && expr.includes('(')) {
-            this._parseExpression(expr.trim());
-        } else {
-            this.key = expr;
+        if (typeof expr === 'string') {
+            const trimmed = expr.trim();
+            if (trimmed.includes('\n')) {
+                this._parseMultiline(trimmed);
+            } else if (trimmed.includes('(')) {
+                this._parseExpression(trimmed);
+            } else {
+                this.key = trimmed;
+            }
         }
     }
 
@@ -82,6 +87,7 @@ class Mono {
      * @private
      */
     _parseExpression(expr) {
+        this._isGroupParent = true;
         const fp = expr.indexOf('(');
         this.key = expr.slice(0, fp).trim();
         const body = expr.slice(fp + 1, expr.lastIndexOf(')')).trim();
@@ -111,6 +117,7 @@ class Mono {
         // 2. 익명 서브트리 (b,c)
         if (t.startsWith('(') && t.endsWith(')')) {
             const sub = new Mono(String(autoIdx));
+            sub._isGroupParent = true;
             const subToks = this._tokenize(t.slice(1, -1));
             let subIdx = 0;
             for (let st of subToks) {
@@ -201,6 +208,143 @@ class Mono {
             }
 
             if (c === ',' && d === 0 && !inQuotes) {
+                if (cur.trim()) toks.push(cur.trim());
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+        if (cur.trim()) toks.push(cur.trim());
+        return toks;
+    }
+
+    /**
+     * 멀티라인 탭/공백 들여쓰기 기반 블록 표현식 파서
+     * @private
+     */
+    _parseMultiline(str) {
+        const rawLines = str.split(/\r?\n/);
+        const lines = [];
+
+        for (let line of rawLines) {
+            if (!line.trim()) continue;
+
+            const leadingMatch = line.match(/^[ \t]*/)[0];
+            let indent = 0;
+            for (let ch of leadingMatch) {
+                indent += (ch === '\t') ? 4 : 1;
+            }
+
+            lines.push({ indent, text: line.trim() });
+        }
+
+        if (lines.length === 0) return;
+
+        const stack = [];
+        let rootNode = null;
+
+        for (let { indent, text } of lines) {
+            while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
+                stack.pop();
+            }
+
+            const parsed = this._parseLineToChain(text);
+            if (!parsed) continue;
+
+            if (stack.length === 0) {
+                if (!rootNode) {
+                    rootNode = parsed.root;
+                } else {
+                    rootNode.addChild(parsed.root);
+                }
+                stack.push({ indent, root: parsed.root, lastTarget: parsed.lastTarget });
+            } else {
+                const parentItem = stack[stack.length - 1];
+                parentItem.lastTarget.addChild(parsed.root);
+                stack.push({ indent, root: parsed.root, lastTarget: parsed.lastTarget });
+            }
+        }
+
+        if (rootNode) {
+            this.key = rootNode.key;
+            this.value = rootNode.value;
+            this.children = rootNode.children;
+            this.childrenOrder = rootNode.childrenOrder;
+        }
+    }
+
+    /**
+     * 단일 라인 텍스트를 노드 체인으로 파싱
+     * @private
+     */
+    _parseLineToChain(text) {
+        if (!text) return null;
+
+        const tokens = this._tokenizeLine(text);
+        if (tokens.length === 0) return null;
+
+        let root = null;
+        let lastTarget = null;
+
+        for (let tok of tokens) {
+            const temp = new Mono();
+            temp._addToken(temp, tok, 0);
+
+            const parsedNode = temp.childrenOrder[0];
+            if (!parsedNode) continue;
+
+            if (!root) {
+                root = parsedNode;
+                lastTarget = this._findDeepestTarget(parsedNode);
+            } else {
+                lastTarget.addChild(parsedNode);
+                lastTarget = this._findDeepestTarget(parsedNode);
+            }
+        }
+
+        return { root, lastTarget };
+    }
+
+    /**
+     * 하위 들여쓰기 노드가 결합될 최하위/단일 대상 노드 검색
+     * @private
+     */
+    _findDeepestTarget(node) {
+        let cur = node;
+        while (cur) {
+            if (cur._isGroupParent) {
+                break;
+            }
+            if (cur.childrenOrder.length === 1) {
+                cur = cur.childrenOrder[0];
+            } else if (cur.childrenOrder.length > 1) {
+                break;
+            } else {
+                break;
+            }
+        }
+        return cur;
+    }
+
+    /**
+     * 라인 내 공백/탭 분할 토크나이저 (괄호 및 따옴표 보호)
+     * @private
+     */
+    _tokenizeLine(line) {
+        const toks = [];
+        let cur = '';
+        let depth = 0;
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (c === '"' || c === "'") inQuotes = !inQuotes;
+            if (!inQuotes) {
+                if (c === '(') depth++;
+                else if (c === ')') depth--;
+            }
+
+            if ((c === ' ' || c === '\t') && depth === 0 && !inQuotes) {
                 if (cur.trim()) toks.push(cur.trim());
                 cur = '';
             } else {
