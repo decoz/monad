@@ -1,4 +1,4 @@
-우리가 지금까지 함께 수립한 MONO (Monad Object Notation)의 철학, 문법, 쿼리 헌법, 그리고 다차원 확장의 역사와 전체 스펙을 종합하여 완벽하게 정립한 **공식 개요서**입니다.
+[English](README.md) | [한국어](README.kr.md)
 
 ---
 

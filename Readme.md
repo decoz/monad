@@ -1,4 +1,4 @@
-Here is the official English specification and introduction for **MONO (Monad Object Notation)**, translated and refined to match the exact same structure and philosophy.
+[English](README.md) | [한국어](README.kr.md)
 
 ---
 
