@@ -280,7 +280,14 @@ class Mono {
     _parseLineToChain(text) {
         if (!text) return null;
 
-        const tokens = this._tokenizeLine(text);
+        let tokens;
+        // 컨트롤 기호 '()', '.', ',' 가 포함되어 있지 않은 라인은 전체를 하나의 단일 토큰으로 처리
+        if (!/[\(\)\.,]/.test(text)) {
+            tokens = [text];
+        } else {
+            tokens = this._tokenizeLine(text);
+        }
+
         if (tokens.length === 0) return null;
 
         let root = null;

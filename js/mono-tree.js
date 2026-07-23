@@ -313,7 +313,7 @@ class MonoTree extends HTMLElement {
 
     _renderNode(node, idx, parentPath) {
         const hasChildren = node.childrenOrder && node.childrenOrder.length > 0;
-        const currentPath = parentPath 
+        const currentPath = parentPath
             ? `${parentPath}.${node.key ? node.key : `[${idx}]`}`
             : (node.key || '[0]');
 
