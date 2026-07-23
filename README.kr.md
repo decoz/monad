@@ -3,6 +3,7 @@
 ---
 
 # 🌌 MONO (Monad Object Notation) 공식 스펙 명세서
+링크 : https://cdn.jsdeliver.net/gh/decoz91/mono/js/mono.js
 
 > 
 > **"타입(Type)을 파괴하고, 오직 경로(Path)와 맥락(Context)으로 세상을 일원화한다."** > MONO는 기존 JSON/YAML의 타입 검사 피로감과 복잡성을 극복하고, 객체 접근 표현 방식(`object.property`)을 정의 시점부터 직관적으로 계승한 **초경량 무타입 데이터/문서 표기 표준**입니다.

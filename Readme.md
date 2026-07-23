@@ -3,6 +3,7 @@
 ---
 
 # 🌌 MONO (Monad Object Notation) Official Specification
+Link : https://cdn.jsdelivr.net/gh/decoz91/mono/js/mono.js
 
 > **"Destroy types, unify the universe with pure Paths and Context."**
 > MONO is an ultra-lightweight, typeless data and document representation standard. It eliminates the overhead and complexity of traditional type checking (found in JSON/YAML) by directly inheriting the natural object access notation (`object.property`) right at the definition phase.

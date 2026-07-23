@@ -32,31 +32,48 @@ class Mono {
      * 표준 쿼리 핸들러
      * - 명시적 Key: get("1") -> key가 "1"인 노드
      * - 순서 Index: get("[1]") -> 1번 인덱스 위치의 자식 노드
+     * - 루트 포함 Key 및 Index: get("a[0]"), get("a.b"), get("[0].[0]")
      */
     get(q) {
         if (!q) return this;
 
-        // 1. 순서 Index 접근 ([1])
-        const m = q.match(/^\[(\d+)\]$/);
-        if (m) {
-            const idx = parseInt(m[1], 10);
-            return this.childrenOrder[idx] || null;
-        }
-
-        // 2. 경로 연결 접근 (a.b 또는 a[0].b)
         const parts = q.split('.');
         let cur = this;
 
-        for (let p of parts) {
+        for (let i = 0; i < parts.length; i++) {
             if (!cur) return null;
-            const acc = p.match(/^([^\[]+)\[(\d+)\]$/);
-            if (acc) {
-                cur = cur.children.get(acc[1]);
-                if (cur) cur = cur.childrenOrder[parseInt(acc[2], 10)] || null;
-            } else {
-                cur = cur.children.get(p);
+            const p = parts[i];
+
+            // 1. 순서 Index 접근 ([0])
+            const pureIdxMatch = p.match(/^\[(\d+)\]$/);
+            if (pureIdxMatch) {
+                const idx = parseInt(pureIdxMatch[1], 10);
+                cur = cur.childrenOrder[idx] || null;
+                continue;
             }
+
+            // 2. Key + Index 접근 (a[0], skills[1])
+            const arrAccessMatch = p.match(/^([^\[]+)\[(\d+)\]$/);
+            if (arrAccessMatch) {
+                const keyPart = arrAccessMatch[1];
+                const idx = parseInt(arrAccessMatch[2], 10);
+
+                if (i === 0 && keyPart === cur.key) {
+                    cur = cur.childrenOrder[idx] || null;
+                } else {
+                    cur = cur.children.get(keyPart);
+                    if (cur) cur = cur.childrenOrder[idx] || null;
+                }
+                continue;
+            }
+
+            // 3. 단일 Key 접근 (a, b)
+            if (i === 0 && p === cur.key) {
+                continue;
+            }
+            cur = cur.children.get(p) || null;
         }
+
         return cur;
     }
 
@@ -77,12 +94,17 @@ class Mono {
                 // 익명 서브트리 (b,c) -> 오토 인덱스 Key 부여
                 const sub = new Mono(String(idx));
                 const subToks = this._tokenize(t.slice(1, -1));
-                let sIdx = 0;
                 for (let st of subToks) {
-                    sub.addChild(new Mono(String(sIdx), st));
-                    sIdx++;
+                    if (st.includes('(')) {
+                        sub.addChild(new Mono(st));
+                    } else {
+                        sub.addChild(new Mono(st, st));
+                    }
                 }
                 this.addChild(sub);
+            } else if (t.includes('(')) {
+                // 이름 있는 서브트리 (예: sub(x, y))
+                this.addChild(new Mono(t));
             } else {
                 // 단말 노드 -> Key와 Value를 동일하게 적재
                 this.addChild(new Mono(t, t));
@@ -115,4 +137,8 @@ class Mono {
         if (cur.trim()) toks.push(cur.trim());
         return toks;
     }
+}
+
+if (typeof module !== 'undefined') {
+    module.exports = Mono;
 }
